@@ -8,20 +8,26 @@ for timepoint=startt:endt
     I=imread(['./Stitched Data 2-14-16/Well1Stitch Time' num2str(timepoint) '.png']);
     figure(1), imshow(I, [])
     drawnow
-    images=cell(27,1);
-    images{timepoint}=I;
     %% make stitched mask
     %one way: graythresh to get threshold, then im2bw to apply threshold
     %another way: multithresh to get the thrshold and imquantize to apply
     %threshold
-    thresh=multithresh(I,1);
-    mask=logical(imquantize(I,thresh)-1);
-    mask=imclose(mask,strel('disk',3));
+    k=graythresh(I);
+    bw=im2bw(I,k);
+    %crop if needed
+    mask=imfill(bw,'holes');
     mask=bwareaopen(mask,70);
-    mask=imfill(mask,'holes');
-
+    mask=imopen(mask,strel('disk',7));
+    mask=imclearborder(mask);
+    D=bwdist(~mask);
+    D=imopen(D,strel('disk',3));
+    D=-D;
+    D(~mask)=-Inf;
+    L=watershed(D);
+    B=L>3;
+    figure, imshow(II,[]);
     %% tracking
-    s=regionprops(mask,I,'MeanIntensity','Area','Centroid','PixelValues');%stores pixel values of each region but doesn't use it?
+    s=regionprops(B,I,'MeanIntensity','Area','Centroid','PixelValues');%stores pixel values of each region but doesn't use it?
     C=vertcat(s.Centroid);
     A=[s.Area]';
     IN=[s.MeanIntensity]';
@@ -74,7 +80,7 @@ b=find(d~=inf); %...anything started with a 0 is out
 d=(d(b));
 % boxplotting absolute difference
 figure, boxplot(d)
-ylabel('Area Difference (µm^2)')
+ylabel('Area Difference (Âµm^2)')
 %%
 limits=[0 30 0 3e+05];
 figure, plot(AS(2,:))
